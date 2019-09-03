@@ -1,17 +1,19 @@
 /*
- * LAB1-part2
+ * LAB1 part2
  * 8/28/2019
  * Authors : Sean Gow & Denice Hickethier 
+
  */ 
 
 #include <avr/io.h>
 
 // CPU Frequency 2Mhz =2*10^6Hz
 // 1000ms=1second
-#define MS_DELAY 2000  // rough estimate of clocks per ms  =cpufreq/1000ms
+#define CYCLES_MS 2000  // rough estimate of clocks per ms  =cpufreq/1000ms
+#define CAL_FACTOR 
 
 //wait_ms: this function creates a poor timer by wasting clock cycles by counting
-void wait_ms(int delay_ms);
+void wait_ms(uint16_t delay_in_ms);
 
 /*
 main program
@@ -38,20 +40,19 @@ int main(void)
 	PORTB_OUT=0xf0;   //set initial state of portB pins off, active low
 	
 	optimizethis:     //horrible use of goto and while loop to bypass optimizations
-	        				  //future: "alt+f7" ->toolchain ->optimizations = none
+					  //future: "alt+f7" ->toolchain ->optimizations = none
 	while(count>0){	  //while we have something to count
 		wait_ms(500); //wait ~500ms,          optimized away unless optimizations disabled
 		count--;      //decrement counter to increment LEDs
-		PORTB_OUT=   (0xF & count) << 4 ; //select first 4 bits of count and bitshift left by 4 bits and write to portb out
+		PORTB_OUT=    count << 4 ; //select first 4 bits of count and bitshift left by 4 bits and write to portb out
 	}
 	count=15;        //reset count to 15 for LEDs to start again at zero
-	goto optimizethis;//abort, hide, run away, divide by zero
+	goto optimizethis;//abort, hide, run away, divide by zero, shafsma no likey
 }
 
-void wait_ms(int delay_ms){
+void wait_ms(uint16_t delay_in_ms){
 	uint32_t i	; //counter unsigned int 32 bits wide, large enough for 2000counts*500ms
-	for ( i=0;i<MS_DELAY*delay_ms;i++){
+	for ( i=0;i<CYCLES_MS*delay_in_ms;i++){
 		;//do nothing
 	}
 }
-
