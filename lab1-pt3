@@ -1,0 +1,33 @@
+/*
+
+Lab1-part 2
+Sean Gow & Denise Hickethier
+*/
+
+
+#include <avr/io.h>
+//32Mhz clock library
+#include <AVRXlib/AVRXClocks.h>
+
+
+int main(void)
+{
+
+//set mcu clock/frequency to 32Mhz
+unsigned long sClk, pClk;
+SetSystemClock(CLK_SCLKSEL_RC32M_gc, CLK_PSADIV_1_gc,CLK_PSBCDIV_1_1_gc);
+GetSystemClocks(&sClk, &pClk);
+
+
+//set portb  pins on low nibble to output mode
+	PORTB_DIR=0x0f;
+
+	//test to visualize loop overhead
+	//change pb0 pin state 4x, observe noticeable delay after 4th LED change 
+	while(1){
+		PORTB_OUT=0x1;	
+		PORTB_OUT=0x0;
+		PORTB_OUT=0x1;
+		PORTB_OUT=0x0;
+	}	
+}
