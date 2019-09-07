@@ -24,7 +24,7 @@ assigning values to these address locations controls the direction and output of
 
 The led's are located on the high nibble which we want to set to output PORTB_DIR = 0xf0
 
-LEDs are active low, ie: binary is inverted -> we must count down to count up...
+LEDs are active low, ie: binary is inverted -> we can count down to count up...
 counter -> LEDs
 15=1111    0000  -> displays as binary 0
 14=1110	   0001   ->displays as binary 1
@@ -47,7 +47,7 @@ int main(void)
 		PORTB_OUT=    count << 4 ; //select first 4 bits of count and bitshift left by 4 bits and write to portb out
 	}
 	count=15;        //reset count to 15 for LEDs to start again at zero
-	goto optimizethis;//abort, hide, run away, divide by zero, shafsma no likey
+	goto optimizethis;//abort, hide, run away, divide by zero, Shaafsma no likey
 }
 
 void wait_ms(uint16_t delay_in_ms){
