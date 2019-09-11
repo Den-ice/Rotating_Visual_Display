@@ -1,5 +1,9 @@
 /*
  * lab2-pt3.c
+ * using an rtc clock
+ * binary led counter at 2 intervals 
+ * low nibble runs at 500ms
+ * high nibble runs at 500ms x 3 = 1.5s 
  *
  * Created: 9/10/2019 11:21:07 AM
  * Authors : Sean Gow & Denice Hickethier 
@@ -13,11 +17,13 @@ volatile uint8_t count=0;
 
 ISR(      RTC_OVF_vect       ){
 
-if(count%3==0)
+	count++; 
+	if(count%3==0)
 		PORTB_OUT-= 0x10;
 	                     //modify only low nibble    //preserve high nibble         
-		PORTB_OUT = ((PORTB_OUT +0x01) && 0x0F) + (PORTB_OUT && 0xf0) ;
-		count++;
+		PORTB_OUT = (count && 0x0F) | (PORTB_OUT && 0xf0) ;
+	
+	
 }
 
 
