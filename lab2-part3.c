@@ -1,6 +1,6 @@
 /*
  * lab2-pt3.c
- * using an rtc clock
+ * using a rtc clock
  * binary led counter at 2 intervals 
  * low nibble runs at 500ms
  * high nibble runs at 500ms x 3 = 1.5s 
