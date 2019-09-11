@@ -1,10 +1,10 @@
-
+/*
  * lab2-pt4.c
  * user input
  * increase/decrease timer interval by button push
  *
  * Created: 9/10/2019 11:21:07 AM
- * Author : Sean
+ * Authors : Sean Gow & Denice Hickethier
  */ 
 
 
