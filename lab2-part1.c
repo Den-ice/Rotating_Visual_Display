@@ -37,6 +37,17 @@ int main(void)
   
   TCC0_PER=0x01e8;	    //488 counter period
   TCC0_CTRLA=0X07;		//1024 PRESCALER
+// 242.2ms intervals
+	
+
+ // TCC0_PER=0x01de;	    //478 counter period
+ // TCC0_CTRLA=0X07;		//1024 PRESCALER
+
+//237.4ms intervals
+//242.2ms-237.4ms=4.8ms/10ticks = .48ms *1000= 480us measured granularity 
+//programmed granularity 512us
+// 512-480/512*100= 6.25% error
+
   
   TCC0_INTCTRLA= PMIC_MEDLVLEN_bm; //assign medium priority to tcc0 interrupt
   PMIC_CTRL = PMIC_MEDLVLEN_bm;   // turn on medium priority interrupts
