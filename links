@@ -1,0 +1,16 @@
+avr a3bu
+https://www.microchip.com/wwwproducts/en/ATXMEGA256A3U  
+    click  documents
+    
+https://www.microchip.com/wwwAppNotes/AppNotes.aspx?appnote=en592036 using the spi
+
+
+
+asm? nah...
+http://ww1.microchip.com/downloads/en/DeviceDoc/Atmel-0856-AVR-Instruction-Set-Manual.pdf
+16bit registers/asm
+http://ww1.microchip.com/downloads/en/Appnotes/doc1493.pdf
+c+asm yuk
+http://ww1.microchip.com/downloads/en/Appnotes/doc42055.pdf
+
+avr b1
