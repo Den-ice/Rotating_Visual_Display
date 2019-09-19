@@ -12,7 +12,7 @@
 //#define clock_freq 32000000
 #define fCLK2M 2000000
 
-int nBScale;
+int nBScale = -4;
 unsigned long nBSel;
 
 volatile uint8_t count=0;
@@ -20,13 +20,15 @@ volatile uint8_t count=0;
 
 ISR (TCC0_OVF_vect){
 				//	USARTC0_DATA=0xb1100011;   //send data
-
+				//	count=count<<1;
+				USARTC0_DATA= 0xAA;	
+					//count++;
 }
 ISR(USARTC0_TXC_vect){
 	//USARTC0_DATA=0X00;
 			//	USARTC0_DATA=' ';   //send data
 			
-			USARTC0_DATA='\n';   //send data
+		
 }
 ISR(USARTC0_DRE_vect){
     //USARTC0_DATA=0x01;
@@ -38,7 +40,7 @@ ISR(USARTC0_DRE_vect){
 
 int main(void)
 {
-	PORTR_DIR=0xFf;
+	PORTR_DIR=0xff;
 	PORTR_OUT=0X00;
 
 
@@ -49,7 +51,7 @@ int main(void)
 	TCC0_INTCTRLA= PMIC_MEDLVLEN_bm; // medium LEVEL interrupt
 	   //PRESCALER /1	/2	/4	/8	/64	/256	/1024
 	  //VALUE		0X1	0X2	0X3	0X4	0X5	0X6		0X7
-	TCC0_CTRLA=0x6;		
+	TCC0_CTRLA=0x2;		
 	//* end timer */
 	
 	//* SPI interrupt*/
@@ -61,8 +63,10 @@ int main(void)
 	
 	/*uart setup */
 	PORTC.DIRSET=PIN3_bm;
+	//PORTC.PIN3CTRL=
 	uint16_t fBuad=57600;
 	long power=pow(2,nBScale);
+	//nBsel is 34
 	nBSel= fCLK2M/(16*(power*fBuad)-1);
     USARTC0.CTRLA= USART_TXCINTLVL_LO_gc;
 	USARTC0_BAUDCTRLA=(unsigned char)(nBSel &0x00FF);
@@ -78,7 +82,7 @@ int main(void)
 	PMIC_CTRL = PMIC_MEDLVLEN_bm|PMIC_LOLVLEX_bm;   // turn on medium priority interrupts & LOW PRIORITY INTERRUPT
 sei();
 
-	USARTC0_DATA=0x00;   //send data
+	USARTC0_DATA=0x01;   //send data
     while (1) 
     {;	
 						//	USARTC0_DATA=0xb1101010;   //send data
@@ -86,4 +90,3 @@ sei();
 
     }
 }
-
