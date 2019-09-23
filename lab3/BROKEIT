@@ -1,0 +1,101 @@
+#include <math.h>
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <AVRXlib/AVRXSerial.h>
+
+//#define clock_freq 32000000
+#define fCLK 8000000L
+
+int nBScale = -4;
+unsigned long nBSel;
+
+volatile uint8_t count=0;
+
+
+ISR (TCC0_OVF_vect){
+				//	USARTC0_DATA=0xb1100011;   //send data
+				//	count=count<<1;
+				USARTC0_DATA=0x55;	
+					}
+ISR(USARTC0_TXC_vect){
+	//USARTC0_DATA=0X00;
+			//	USARTC0_DATA=' ';   //send data
+			
+		
+}
+ISR(USARTC0_DRE_vect){
+    //USARTC0_DATA=0x01;
+
+}
+
+
+
+
+int main(void)
+{
+	PORTR_DIR=0xff;
+	PORTR_OUT=0X00;
+
+//set mcu clock/frequency to 32Mhz
+unsigned long sClk, pClk;
+SetSystemClock(CLK_SCLKSEL_RC32M_gc, CLK_PSADIV_4_gc,CLK_PSBCDIV_1_1_gc);
+GetSystemClocks(&sClk, &pClk);
+//INITIALIZATIONS
+	cli();
+	//* timer interrupt */
+	TCC0_PER=0Xf4;					//period
+	TCC0_INTCTRLA= PMIC_MEDLVLEN_bm; // medium LEVEL interrupt
+	   //PRESCALER /1	/2	/4	/8	/64	/256	/1024
+	  //VALUE		0X1	0X2	0X3	0X4	0X5	0X6		0X7
+	TCC0_CTRLA=0x5;		
+	//* end timer */
+	
+	//* SPI interrupt*/
+	//PORTC.DIR=PIN4_bm|PIN5_bm|PIN7_bm;;
+	//SPIC.DATA=0b11001010;
+	//SPIC.CTRL=  SPI_ENABLE_bm|SPI_MASTER_bm|SPI_PRESCALER_DIV128_gc|SPI_MODE0_bm;  //| SPI_CLK2X_bm 
+	/*end spi*/
+	
+	
+	/*uart setup */
+	/*USART initialization should use the following sequence:
+1. Set the TxD pin value high, and optionally set the XCK pin low.
+2. Set the TxD and optionally the XCK pin as output.
+3. Set the baud rate and frame format.
+4. Set the mode of operation (enables XCK pin output in synchronous mode).
+5. Enable the transmitter or the receiver, depending on the usage.
+For interrupt-driven USART operation, global interrupts should be disabled during the initialization.
+Before doing a re-initialization with a changed baud rate or frame format, be sure that there are no ongoing transmissions
+while the registers are changed.*/
+	
+	PORTD.DIRSET=PIN3_bm;
+	
+	PORTC_PIN3CTRL=PORT_OPC_PULLUP_gc;
+	
+	//PORTC.PIN3CTRL=
+	uint16_t fBuad=57600;
+	long power=pow(2,nBScale);
+	//nBsel is 34
+	nBSel= fCLK/(16*(power*fBuad)-1);
+	USARTD0_BAUDCTRLA=(unsigned char)(nBSel &0x00FF);
+	USARTD0_BAUDCTRLB=(char)((nBScale &0x00F)<<4)|((nBSel & 0x0F00>>8));
+					//ASYNC MODE                //8 BIT CHARS        //PARITY OFF               //NO STOP BIT
+	USARTD0.CTRLC=USART_CMODE_ASYNCHRONOUS_gc | USART_CHSIZE_8BIT_gc | USART_PMODE_DISABLED_gc   |PMIC_LOLVLEX_bm;
+	
+	USARTD0.CTRLB=USART_RXEN_bm|USART_TXEN_bm;
+	
+    USARTD0.CTRLA= USART_TXCINTLVL_LO_gc;
+	/*end uart*/
+
+	/* interrupt controller */
+	PMIC_CTRL = PMIC_MEDLVLEN_bm|PMIC_LOLVLEX_bm;   // turn on medium priority interrupts & LOW PRIORITY INTERRUPT
+sei();
+
+//	USARTC0_DATA=0x01;   //send data
+    while (1) 
+    {;	
+						//	USARTC0_DATA=0xb1101010;   //send data
+
+
+	}
+}
