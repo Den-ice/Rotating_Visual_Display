@@ -30,7 +30,7 @@ volatile short int = flag;
 
 ISR (TCC0_OVF_vect){
 				//	USARTC0_DATA=0xb1100011;   //send data
-				//	count=count<<1;
+			//	count=count<<1;
 			//	USARTC0_DATA= 'B';//0x02;	
 					//count++;
 }
