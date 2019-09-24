@@ -119,7 +119,7 @@ sei();
         {
           flag = FALSE;
           UsartDataWrite(charcounter[x]);
-          numberCount = (++charcounter)%5;
+          charcounter = (++charcounter)%5;
 
         }
 
