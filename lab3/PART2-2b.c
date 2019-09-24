@@ -15,6 +15,7 @@
 #define fCLK 2000000L  //cpu is at 32mhz, 2000000  works for 57.6k sync
 #define fbaud 57600
 
+void USART_TX(volatile int *flag);
 /* fun_prototypes.h */
 //prototypes for peripheral initialization functions
 void sys_clock();
@@ -88,10 +89,8 @@ void USART_TX(volatile int *flag){
 
 
 
-/*\  Program Code/functions /*\
 
-
-/* fun_prototypes.c */
+// fun_prototypes.c 
 /*\/\/\/ initialization functions \/\/*/
 
 void sys_clock(){
