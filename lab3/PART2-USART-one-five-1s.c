@@ -38,15 +38,12 @@ volatile int count=0;
 //setup system clock
 unsigned long sClk, pClk; //sys clock and peripheral clock
 ISR (TCC0_OVF_vect){
-	//*word=x[count%5];
-	//if ((wordcount[count%0]=='\0')||(wordcount[count%0]=='\n')){
-		if (flag==1){
-			flag=0;
+		if (flag==1){ //check if word completed
+			flag=0; //reset flag
 		}
 			++count;
 		USARTC0_DATA=0x00; //start transmission
 
-//	USARTC0_DATA=0x00;
 }
 
 ISR(USARTC0_TXC_vect){
@@ -121,17 +118,16 @@ void setup_spi(){
 
 //Configure USART
 void setup_usart(){
-	PORTC.DIRSET=PIN3_bm;
-	PORTC.PIN3CTRL=PORT_OPC_PULLUP_gc;
-	//nBSel= //( (10 / pow(2.0,(double)nBScale)) * (double)((double)pClk / (16.0 * (double)fbaud)) - 1.0);
-	nBSel=fCLK/(16*(pow(2,nBScale)*57611))-1;
+	PORTC.DIRSET=PIN3_bm;		//set pin3 to output
+	PORTC.PIN3CTRL=PORT_OPC_PULLUP_gc;	//pullup pin3
+	nBSel=fCLK/(16*(pow(2,nBScale)*57611))-1; //calculate settings, tweaked to sync at ~57.6k
 	
-	USARTC0_BAUDCTRLA=(unsigned char)(nBSel &0x00FF);
+	USARTC0_BAUDCTRLA=(unsigned char)(nBSel &0x00FF);	
 	USARTC0_BAUDCTRLB=(char)((nBScale &0x00F)<<4)|((nBSel & 0x0F00>>8));	
 	USARTC0.CTRLA= USART_TXCINTLVL_LO_gc;
 				//ASYNC MODE                //8 BIT CHARS        //PARITY OFF               //NO STOP BIT     //low interrupt
 	USARTC0.CTRLC=USART_CMODE_ASYNCHRONOUS_gc | USART_CHSIZE_8BIT_gc | USART_PMODE_DISABLED_gc	|0x00	;
-	USARTC0.CTRLB=USART_RXEN_bm|USART_TXEN_bm;
+	USARTC0.CTRLB=USART_RXEN_bm|USART_TXEN_bm;  
 	
 }
 
