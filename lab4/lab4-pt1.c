@@ -1,5 +1,5 @@
 /*
- * Lab3-Part3
+ * Lab4-Part1
  * TX count using avrx library
  * no rx yet
  *
@@ -40,12 +40,13 @@ volatile XUSARTst Ser;
 unsigned long sClk, pClk; //sysclock and perihoeral clock
 volatile char *rx_buf;
 volatile int sweep=0;
-uint16_t adc_sample[4];
+int adc_sample[2];
+char *sample_word;
 
 ISR (TCC0_OVF_vect){
 
-
-	//ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
+	
+	ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
 	ADCA_CTRLA |= ADC_ENABLE_bm; // enable and wait ~24clks?
 	ADCA_CTRLA |= ADC_CH0START_bm ; //
 	}
@@ -62,20 +63,9 @@ ISR(USARTC0_DRE_vect){
 	
 }
 ISR(ADCA_CH0_vect){
-	
-	//	itoa(adc_sample[0],rx_buf,10);
-	//USART_send(&Ser,rx_buf);	
-	
 	adc_sample[0]=ADCA.CH0.RES;
-	
-	USART_putchar(&Ser,adc_sample[0] );
-	
-	//if (sweep%1!=0){
-	//ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
-	
-	//USART_putchar(&Ser,'\n');
-//	sweep++;
-	//}
+	sprintf(sample_word,"The adc value is : %d \n",adc_sample[0]);
+	USART_send(&Ser,&sample_word[0] );
 	}
 
 ISR(ADCB_CH0_vect){
@@ -101,7 +91,7 @@ void setup_peripherals(){
 	sys_clock();
 	setup_timer();
 	setup_adcA();
-	setup_adcB();
+	
 	//setup_spi();
 	//setup_usart();
 	setup_avrx_usart();
@@ -112,7 +102,9 @@ void setup_peripherals(){
 
 int main(void)
 {	
-	rx_buf=malloc(5);
+	
+	sample_word=malloc(50);
+	
 	setup_peripherals();
 	
 while (1)
@@ -121,27 +113,14 @@ while (1)
     }
 }
 
-void setup_adcB(){
-
-		ADCB_CH0_INTCTRL =ADC_CH_INTMODE_COMPLETE_gc| ADC_CH_INTLVL_HI_gc;
-		ADCB_CTRLB |= ADC_RESOLUTION_12BIT_gc;
-		ADCB_REFCTRL |= ADC_REFSEL_INTVCC2_gc; // use 3V3 to chip
-		ADCB_PRESCALER |= ADC_PRESCALER_DIV512_gc; //peripheral clock/512
-
-		ADCB_CH0_CTRL = ADC_CH_INPUTMODE_SINGLEENDED_gc| ADC_CH_GAIN_1X_gc;
-		ADCB_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN5_gc|ADC_CH_MUXPOS_PIN6_gc|ADC_CH_MUXPOS_PIN7_gc;//ADC_CH_MUXPOS_PIN4_gc|ADC_CH_MUXPOS_PIN5_gc;
-		ADCB_CTRLA |= ADC_ENABLE_bm; // enable and wait ~24clks?	
-		ADCB_CTRLA |= ADC_CH0START_bm ; //
-		
-}
 
 void setup_adcA(){
 		ADCA_CTRLB |= ADC_RESOLUTION_12BIT_gc;
-		ADCA_REFCTRL |= ADC_REFSEL_INTVCC_gc; // use 3V3 to chip
-		ADCA_PRESCALER |= ADC_PRESCALER_DIV4_gc; //peripheral clock/512
+		ADCA_REFCTRL |= ADC_REFSEL_INTVCC2_gc; // use 3V3 to chip
+		ADCA_PRESCALER |= ADC_PRESCALER_DIV16_gc; //peripheral clock/512
 
 		ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
-		ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN0_gc|ADC_CH_MUXNEG0_bm;//ADC_CH_MUXPOS_PIN4_gc|ADC_CH_MUXPOS_PIN5_gc;
+		ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN0_gc;//ADC_CH_MUXPOS_PIN4_gc|ADC_CH_MUXPOS_PIN5_gc;
 		ADCA_CTRLA |= ADC_ENABLE_bm; // enable and wait ~24clks?	
 		ADCA_CH0_INTCTRL = ADC_CH_INTMODE_COMPLETE_gc| ADC_CH_INTLVL_HI_gc;	
 		ADCA_CTRLA |= ADC_CH0START_bm ; //
@@ -150,14 +129,14 @@ void setup_adcA(){
 
 void sys_clock(){
 	//set mcu clock/frequency
-	SetSystemClock(CLK_SCLKSEL_RC2M_gc, CLK_PSADIV_1_gc,CLK_PSBCDIV_1_1_gc);
+	SetSystemClock(CLK_SCLKSEL_RC32M_gc, CLK_PSADIV_1_gc,CLK_PSBCDIV_1_1_gc);
 	GetSystemClocks(&sClk, &pClk);
 	}
 	
 void setup_timer(){
 	//	1s= 2Mhz/1024= 0x7a1
 	//  1s=32m/1024=0x7a12
-	TCC0_PER=0X7a1;					//1s
+	TCC0_PER=0X7a12;					//1s
 	TCC0_INTCTRLA = PMIC_MEDLVLEN_bm; // medium level interrupt
 	TCC0_CTRLA=0x7;
 	//CTRLA /PRESCALER /1	/2	/4	/8	/64	/256	/1024
