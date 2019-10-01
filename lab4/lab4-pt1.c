@@ -1,5 +1,5 @@
 /*
- * Lab1-Part1
+ * Lab4-Part1
  * ADC Sampling, reported over usart
  * usart rx interrupt triggered samples,
  * ANY input on usart that triggers the rx interrupt will start an adc sample
@@ -40,22 +40,22 @@ volatile XUSARTst Ser;
 unsigned long sClk, pClk; //sysclock and peripheral clock
  char rx_buf[1];
 volatile int sweep=0;
-int adc_sample[2];
+volatile uint16_t adc_sample[2];
 char *sample_word;
 volatile int wait_for_it=0; //sephamore /flag
-volatile int enable_count=1;
-volatile int enable_adc=1;
+volatile int enable_count=0;
+volatile int enable_light_adc=0;
 
 ISR (TCC0_OVF_vect){
 
 
 	if (enable_count==1){
-		
 		word=wordcount[count%15];
 		count++;	
 		USART_send(&Ser, word);
 	}
-	if (enable_adc==1){
+	if (enable_light_adc==1){
+
 		ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
 		ADCA_CTRLA |= ADC_ENABLE_bm; // enable and wait ~24clks?
 		ADCA_CTRLA |= ADC_CH0START_bm ; //
@@ -80,15 +80,20 @@ ISR(USARTC0_DRE_vect){
 }
 
 ISR(ADCA_CH0_vect){
+	free(sample_word);
+	sample_word=malloc(50);
 	adc_sample[0]=ADCA.CH0.RES;
 	sprintf(sample_word,"The adc value is : %d \n",adc_sample[0]);
-	USART_send(&Ser,&sample_word[0] );
+	USART_send(&Ser,sample_word );
 	}
 
 ISR(ADCB_CH0_vect){
-	adc_sample[0]=ADCB.CH0.RES;
-	sprintf(sample_word,"The adc value is not : %d \n",adc_sample[0]);
-	USART_send(&Ser,&sample_word[0] );
+	free(sample_word);
+	sample_word=malloc(50);
+	adc_sample[1]=ADCB.CH0.RES;
+	sprintf(sample_word,"%d,",adc_sample[1]);
+	//"The adc value is not : %d \n",adc_sample[1]);
+	USART_send(&Ser,sample_word );
 }
 
 /* //non avrx library usart tx function
@@ -152,24 +157,31 @@ void parse_it(char *text){
 		case 'e': count=14;break;
 		case 'f': count=15;break;
 		case 's': enable_count^=0x01;
-		
 			USART_send(&Ser,"toggle_count");
 			break;
-			
-		case 'x': enable_adc^=0x01;
-			USART_send(&Ser,"toggle_adc");
+		case 'l': enable_light_adc^=0x01;
+			USART_send(&Ser,"sample_light");
+			ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
+			ADCA_CTRLA |= ADC_ENABLE_bm; // enable and wait ~24clks?
+			ADCA_CTRLA |= ADC_CH0START_bm ; //
 			break;
-			count =count-1;
+		case 'x': 
+			//USART_send(&Ser,"sample_pin0 ");
+			ADCB_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
+			ADCB_CTRLA |= ADC_ENABLE_bm; // enable and wait ~24clks?
+			ADCB_CTRLA |= ADC_CH0START_bm ; //
+			
 	}
-		//Ser.serStatus=_USART_RX_ON|_USART_RX_DONE;
+	count =count-1;
 	return;	
 }
 
 void setup_adcA(){
 		ADCA_CTRLB |= ADC_RESOLUTION_12BIT_gc;
 		ADCA_REFCTRL |= ADC_REFSEL_INTVCC2_gc; // use 3V3 to chip
-		ADCA_PRESCALER |= ADC_PRESCALER_DIV16_gc; //peripheral clock/512
+		ADCA_PRESCALER |= ADC_PRESCALER_DIV512_gc; //peripheral clock/512
 		ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
+		
 		ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN0_gc;//ADC_CH_MUXPOS_PIN4_gc|ADC_CH_MUXPOS_PIN5_gc;
 		ADCA_CTRLA |= ADC_ENABLE_bm; // enable and wait ~24clks?	
 		ADCA_CH0_INTCTRL = ADC_CH_INTMODE_COMPLETE_gc| ADC_CH_INTLVL_HI_gc;	
@@ -181,7 +193,7 @@ void setup_adcA(){
 void setup_adcB(){
 	ADCB_CTRLB |= ADC_RESOLUTION_12BIT_gc;
 	ADCB_REFCTRL |= ADC_REFSEL_INTVCC2_gc; // use 3V3 to chip
-	ADCB_PRESCALER |= ADC_PRESCALER_DIV16_gc; //peripheral clock/512
+	ADCB_PRESCALER |= ADC_PRESCALER_DIV256_gc; //peripheral clock/512
 
 	ADCB_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
 	ADCB_CH0_MUXCTRL = ADC_CH_MUXNEG_PIN0_gc|ADC_CH_MUXNEG_PIN1_gc|ADC_CH_MUXNEG_PIN2_gc;//|ADC_CH_MUXPOS_PIN6_gc|ADC_CH_MUXPOS_PIN7_gc;//ADC_CH_MUXPOS_PIN4_gc|ADC_CH_MUXPOS_PIN5_gc;
@@ -239,7 +251,7 @@ void setup_avrx_usart(){
 	USART_init(&Ser, 0xc0, pClk, (_USART_TXCIL_LO | _USART_RXCIL_LO), 576, -4,_USART_CHSZ_8BIT, _USART_PM_DISABLED, _USART_SM_1BIT);
 	USART_buffer_init(&Ser, 160, 180);
 	Ser.fInMode = _INPUT_CR ; //| _INPUT_ECHO | _INPUT_TTY;
-	Ser.fOutMode = _OUTPUT_CRLF;
+	//Ser.fOutMode = _OUTPUT_CRLF;
 	USART_enable(&Ser,(USART_TXEN_bm|USART_RXEN_bm));
 }
 
