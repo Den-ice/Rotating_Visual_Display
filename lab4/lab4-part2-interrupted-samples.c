@@ -1,7 +1,6 @@
 /*
  * Lab4-Part2-interrupt timer triggered samples
-* samples and outputs x,y,z  of acelerometer on pins adc0,adc1,adc2 to usart
-* Created: 9/19/2019 3:16:32 PM
+ * Created: 9/19/2019 3:16:32 PM
  * Author : Sean Gow and Denice Hickethier
  */
 #include <avr/io.h>
@@ -20,11 +19,11 @@
 void sys_clock();
 void setup_timer();
 void setup_spi();
-//void setup_usart();
 void setup_peripherals();
 void setup_avrx_usart();
 void setup_gpio(); 
 /*end of fun */
+
 
 void setup_adcA(); //new for lab4
 void setup_adcB(); //new for lab4
@@ -34,6 +33,7 @@ volatile int tx_ready=0;
 volatile XUSARTst Ser;
  char *wordcount[]= {"one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen"};
  char *word;
+
 
 unsigned long sClk, pClk; //sysclock and peripheral clock
  char rx_buf[1];
@@ -113,6 +113,7 @@ ISR(ADCA_CH0_vect){
 
 ISR(ADCB_CH0_vect){
 	adc_sample[adccount]=ADCB.CH0.RES;
+	PORTR_OUT^=0x02;
 }
 
 
@@ -192,7 +193,7 @@ void setup_adcA(){
 		ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
 		
 		ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN0_gc;
-		ADCA_CTRLA |= ADC_ENABLE_bm; // enable and wait ~24clks?	
+		ADCA_CTRLA |= ADC_ENABLE_bm; 	
 		ADCA_CH0_INTCTRL = ADC_CH_INTMODE_COMPLETE_gc| ADC_CH_INTLVL_HI_gc;	
 		ADCA_CTRLA |= ADC_CH0START_bm ; //
 		
@@ -206,7 +207,7 @@ void setup_adcB(){
 
 	ADCB_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
 	ADCB_CH0_MUXCTRL =ADC_CH_MUXPOS_PIN0_gc|ADC_CH_MUXPOS_PIN1_gc|ADC_CH_MUXPOS_PIN2_gc;
-	ADCB_CTRLA |= ADC_ENABLE_bm; // enable and wait ~24clks?
+	ADCB_CTRLA |= ADC_ENABLE_bm; 
 	ADCB_CH0_INTCTRL = ADC_CH_INTMODE_COMPLETE_gc| ADC_CH_INTLVL_HI_gc;
 	ADCB_CTRLA |= ADC_CH0START_bm ; //
 	
@@ -232,13 +233,13 @@ void setup_timer(){
 }
 
 void setup_compare_timer(){
-	TCC0_CTRLB= (((TCC0_CTRLB)>>3)<<3)|TC_WGMODE_NORMAL_gc;
-		
-TCC0_CCA=TCC0_PER/8;
-TCC0_CCB=TCC0_PER/4;
-TCC0_CCC=TCC0_PER/2;
-TCC0_CTRLB|= TC0_CCAEN_bm|TC1_CCAEN_bm;
-TCC0_INTCTRLB|=PMIC_MEDLVLEN_bm<<TC0_CCAINTLVL_gp|PMIC_MEDLVLEN_bm<<TC0_CCBINTLVL_gp|PMIC_MEDLVLEN_bm<<TC0_CCCINTLVL_gp;	
+//set compare counters			
+	TCC0_CCA=TCC0_PER/8;
+	TCC0_CCB=TCC0_PER/4;
+	TCC0_CCC=TCC0_PER/2;
+
+	TCC0_CTRLB|= TC0_CCAEN_bm|TC0_CCBEN_bm|TC0_CCCEN_bm;
+	TCC0_INTCTRLB|=PMIC_MEDLVLEN_bm<<TC0_CCAINTLVL_gp|PMIC_MEDLVLEN_bm<<TC0_CCBINTLVL_gp|PMIC_MEDLVLEN_bm<<TC0_CCCINTLVL_gp;	
 }
 
 
@@ -258,7 +259,7 @@ void setup_avrx_usart(){
 	USART_init(&Ser, 0xc0, pClk, (_USART_TXCIL_LO | _USART_RXCIL_LO), 576, -4,_USART_CHSZ_8BIT, _USART_PM_DISABLED, _USART_SM_1BIT);
 	USART_buffer_init(&Ser, 160, 180);
 	Ser.fInMode = _INPUT_CR ; //| _INPUT_ECHO | _INPUT_TTY;
-	//Ser.fOutMode = _OUTPUT_CRLF;
+	Ser.fOutMode = _OUTPUT_CRLF;
 	USART_enable(&Ser,(USART_TXEN_bm|USART_RXEN_bm));
 	
 }
@@ -268,27 +269,3 @@ void setup_gpio(){
 	PORTR_OUT|=0X02;//turn R0 led on
 
 }
-
-
-
-
-/*
-void setup_usart(){
-	
-	int nBScale =-5;
-	unsigned long nBSel;
-	long fCLK =2000000L ;  //cpu is at 32mhz, 2000000  works for 57.6k sync
-	long fbaud= 57611 ;
-	
-	PORTC.DIRSET=PIN3_bm;		//set pin3 to output
-	PORTC.PIN3CTRL=PORT_OPC_PULLUP_gc;	//pullup pin3
-	nBSel=fCLK/(16*(pow(2,nBScale)*fbaud))-1; //calculate settings, tweaked to sync at ~57.6k
-	
-	USARTC0_BAUDCTRLA=(unsigned char)(nBSel &0x00FF);	
-	USARTC0_BAUDCTRLB=(char)((nBScale &0x00F)<<4)|((nBSel & 0x0F00>>8));	
-	USARTC0.CTRLA= USART_TXCINTLVL_LO_gc;
-				//ASYNC MODE                //8 BIT CHARS        //PARITY OFF               //NO STOP BIT     //low interrupt
-	USARTC0.CTRLC=USART_CMODE_ASYNCHRONOUS_gc | USART_CHSIZE_8BIT_gc | USART_PMODE_DISABLED_gc	|0x00	;
-	USARTC0.CTRLB=USART_RXEN_bm|USART_TXEN_bm;  
-	
-}*/
