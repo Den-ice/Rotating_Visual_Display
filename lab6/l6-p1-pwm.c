@@ -8,33 +8,37 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <avr/interrupt.h>
+#include <math.h>
+
 
 /* fun_prototypes.h */
 //prototypes for peripheral initialization functions
 void sys_clock();
 void setup_timer();
+void setup_compare_timer();
 void setup_peripherals();
+void setup_gpio(); 
 /*end of fun */
 void tcc0_pwm_control(uint8_t ,unsigned long , uint8_t );
 
 
-unsigned long sClk; //sysclock and peripheral clock
-unsigned long pClk=32000000;
-
 ISR (TCC0_OVF_vect){	
-	PORTC_OUT|=0X01;			
-	PORTR_OUT^=0x02;
 	
+
     }
 	
-	ISR(TCC0_CCA_vect){  
+ISR(TCC0_CCA_vect){  
+	PORTC_OUT|=0X01;			
+	PORTR_OUT^=0x02;
+}
+		
+ISR(TCC0_CCB_vect){ 
 	PORTC_OUT=PORTC_OUT&~0X01;			
 	PORTR_OUT|=0X02;
-	}
-		
-	ISR(TCC0_CCB_vect){ 
-	}
-	ISR(TCC0_CCC_vect){
+
+
+}
+ISR(TCC0_CCC_vect){
 
 	}
 
@@ -55,7 +59,10 @@ int main(void)
 	//PORTC.PIN0CTRL=PORT_OPC_PULLUP_gc;
 	PORTR_DIR=0X2;
 	setup_peripherals();
-	tcc0_pwm_control(10,pow(10,6),8);
+	//10 ,ms , 8%
+	//tcc0_pwm_control(10,pow(10,6),8);
+	
+	tcc0_pwm_phase_correct(10,(unsigned long)pow(10,6),8);
 while (1)
     {
     }
@@ -102,12 +109,10 @@ void setup_compare_timer(){
 
 
 void tcc0_pwm_control(uint8_t time, unsigned long t_scale, uint8_t duty_cycle){
-
-
-
 	int i=0;
 	int prescale=1024;
 	uint16_t per=0;
+	unsigned long pClk=32000000;
 	/* 1s period =pclk/divisor */
 	
 	/*
@@ -132,5 +137,40 @@ void tcc0_pwm_control(uint8_t time, unsigned long t_scale, uint8_t duty_cycle){
 	// 1SECOND/TSCALE*(TIME)
 	TCC0_PER=per+4;
 	TCC0_CCA=(TCC0_PER*duty_cycle)/100+1;	
+}
+
+
+void tcc0_pwm_phase_correct(uint8_t time, unsigned long t_scale, uint8_t duty_cycle){
+	int i=0;
+	int prescale=1024;
+	uint16_t per;
+	unsigned long pClk=32000000;
+
+	/* 1s period =pclk/divisor */
 	
+	/*
+	2^10=1024  0x7
+	2^8=256   0x6
+	2^6=64   0x5
+	2^3=8    0x4
+	2^2=4    0x3
+	2^1=2    0x2
+	2^0=1    0x1   
+	*/
+	//turn bitvalue into value for easier calculation
+	for (i=7;i>TCC0_CTRLA;i--){
+		prescale=prescale/2;
+		if (i>4) //prescale decrement by factor of 4 if >4, or 2 <=4
+		prescale=prescale/2;
+    }
+	t_scale=t_scale/prescale;
+	per=pClk/prescale;
+	per= per /t_scale*time;
+//	per=per*duty_cycle;
+	// 1SECOND/TSCALE*(TIME)
+	TCC0_PER=per+4;
+	TCC0_CCA=0;//(TCC0_PER*duty_cycle/2)/100;
+	TCC0_CCB=(TCC0_PER*duty_cycle)/100+1;	
+	
+	TCC0_CTRLB=1<<TC_WGMODE_DSTOP_gc; //ENABLE DUAL SLOPE PWM,  OTHER OPTIONS: DS_T DS_B DSBOTH
 }
