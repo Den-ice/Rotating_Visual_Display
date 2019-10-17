@@ -41,7 +41,15 @@ ISR(TCC0_CCB_vect){
 ISR(TCC0_CCC_vect){
 
 	}
+ISR( PORTF_INT0_vect ){
+	 input_changed=~PORTE_IN ;
+	if (input_changed& 0x02)
+		duty=duty+10;
+	else if (input_changed&0x04)
+		duty=duty-10;
+	tcc0_pwm_phase_correct(10,(unsigned long)pow(10,6),duty);
 
+		}
 
 // call used peripheral setups
 void setup_peripherals(){
@@ -173,4 +181,11 @@ void tcc0_pwm_phase_correct(uint8_t time, unsigned long t_scale, uint8_t duty_cy
 	TCC0_CCB=(TCC0_PER*duty_cycle)/100+1;	
 	
 	TCC0_CTRLB=1<<TC_WGMODE_DSTOP_gc; //ENABLE DUAL SLOPE PWM,  OTHER OPTIONS: DS_T DS_B DSBOTH
+}
+
+void input_interrupts(){
+	PORTF_INT0MASK=0x02|0x04;  //turn on interrupts for ports 0:5
+	PORTF_INTCTRL= PORT_INT0LVL_MED_gc;
+	PORTCFG_MPCMASK=0x02|0x04;  //0:5
+	PORTF_PIN0CTRL=     PORT_ISC_FALLING_gc; //SET MPCMASKED PINS TO 0X02 sense low (capacitive touch buttons are active low)
 }
