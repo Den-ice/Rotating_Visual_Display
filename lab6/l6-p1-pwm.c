@@ -1,5 +1,5 @@
 /*
- * Lab4-Part2-interrupt timer triggered samples
+ * Lab6-pt1 pwm
  * Created: 9/19/2019 3:16:32 PM
  * Author : Sean Gow and Denice Hickethier
  */
