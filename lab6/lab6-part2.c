@@ -1,5 +1,6 @@
 /*
- * Lab6-pt1 pwm
+ * Lab6-pt2 pwm
+ *ramp up/ramp down
  * Created: 10/16/19 3:16:32 PM
  * Author : Sean Gow and Denice Hickethier
  */
@@ -9,7 +10,7 @@
 #include <stdlib.h>
 #include <avr/interrupt.h>
 #include <math.h>
-#include <AVRXlib/AVRXClocks.h>
+//#include <AVRXlib/AVRXClocks.h>
 
 
 /* fun_prototypes.h */
@@ -44,9 +45,11 @@ ISR(TCC0_CCB_vect){
 
 }
 ISR(TCC0_CCC_vect){
-
+	if ((TCC0_CCB+duty)>0 &&(( TCC0_CCB+duty)<TCC0_PER)){
+		TCC0_CCB+=duty;
+	}//else repeat
+		//TCC0_CCB=0;
 	}
-	
 ISR( PORTF_INT0_vect ){
 	 input_changed = ~PORTF_IN ;
 	if (input_changed& 0x02)
@@ -54,9 +57,10 @@ ISR( PORTF_INT0_vect ){
 	else if (input_changed&0x04)
 		duty--;
 			
+			TCC0_CCC=300;
 
-	if(TCC0_CCA==0)
-		TCC0_CCB=TCC0_PER*duty/100;
+	//if(TCC0_CCA==0)
+		//TCC0_CCB=TCC0_PER*duty/100;
 
 		}
 
@@ -90,15 +94,14 @@ while (1)
 void sys_clock(){
 	
 	//set mcu clock/frequency
-	SetSystemClock(CLK_SCLKSEL_RC32M_gc, CLK_PSADIV_1_gc,CLK_PSBCDIV_1_1_gc);
-	GetSystemClocks(&sClk, &pClk);
-	/*
-
+//	SetSystemClock(CLK_SCLKSEL_RC32M_gc, CLK_PSADIV_1_gc,CLK_PSBCDIV_1_1_gc);
+//	GetSystemClocks(&sClk, &pClk);
+	
     OSC_CTRL=OSC_RC32MEN_bm; 
     while(!(OSC_STATUS & OSC_RC32MRDY_bm));   
     CCP=CCP_IOREG_gc; 
     CLK_CTRL=CLK_SCLKSEL_RC32M_gc;
-*/
+
 	
 	}
 	
