@@ -1,0 +1,2 @@
+For XPLAINED 256a3bu, jtag/pdi share pins disable jtag enables the other
+Disable JTAG using atmel studio, to use PDI on mplab
