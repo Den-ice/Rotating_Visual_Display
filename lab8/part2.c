@@ -1,233 +1,269 @@
 /*
- * lab8-part2
- * Created: 2019
- * Authors : Sean Gow & Denice Hickethier
- */ 
-
-
+ * Lab4-Part2-interrupt timer triggered samples
+ * Created: 9/19/2019 3:16:32 PM
+ * Author : Sean Gow and Denice Hickethier
+ */
 #include <avr/io.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <avr/interrupt.h>
+#include <math.h>
+
 #include <AVRXlib/AVRXClocks.h>
+#include <AVRXlib/AVRXSerial.h>
 
+
+/* fun_prototypes.h */
+//prototypes for peripheral initialization functions
+void sys_clock();
 void setup_timer();
-void setup_compare_timer();
+void setup_spi();
+void setup_peripherals();
+void setup_avrx_usart();
+void setup_gpio(); 
+/*end of fun */
 
-void state_machine( uint8_t input);
-volatile uint8_t state=0;
-volatile uint8_t motor_state=0x01;
-void S0(uint8_t input);
-void S1(uint8_t input);
-void S2(uint8_t input);
-void S3(uint8_t input);
+int dark[2];
+
+int dim[2];
 
 
-#define ON  1
-#define OFF 0
-#define UP 0
-#define DOWN 1
-#define BUTTON 0x01
-#define ENDUP 0x02
-#define ENDDOWN 0x03
-#define BADDOOR 0x04
+int bright[2];
 
-#define SQUIRREL 4095
-#define JUSTRIGT 4095
-#define OO_A_MAGNET 1024
+void setup_adcA(); //new for lab4
+void setup_adcB(); //new for lab4
+volatile XUSARTst Ser;
 
-volatile uint16_t adc_sample[3];
-void setup_adcA();
-volatile uint8_t adccount=0;
- unsigned long sClk, pClk;
-uint8_t input_changed;
- 
- //BADISR_vect catchall  
-ISR(      RTC_OVF_vect){
-			//PORTB_OUT -= ERROR ;
-	}	
+unsigned long sClk, pClk; //sysclock and peripheral clock
+ char rx_buf[1];
+volatile uint16_t hall;
+char *sample_word;
+volatile uint16_t light=0;
+volatile uint16_t close[2],avg[2],far[2];
 
-	ISR (TCC0_OVF_vect){
-	//light sensor
-	if (adc_sample[0]==SQUIRREL)
-	state_machine(BADDOOR);
-	//temp
-	if (adc_sample[1]>=JUSTRIGT&&adc_sample[1]<=JUSTRIGT+300)  //temp between 20*C and 25*C
-	state_machine(ENDUP);
-	//external- hall effect
-	if (adc_sample[2]>=OO_A_MAGNET)
-	state_machine(ENDDOWN);	
-	}
+volatile int D,I,B,C,A,F=0;
 
+
+ISR (TCC0_OVF_vect){
+
+//calculate fuzziness truth value
+if(light<=(dim[0]-300)){
+	D= 100;
+	I=0;
+	B=0;
+}
+else if (light<=dark[1]){
+	I=(light-200)/7;
+	D=100-I;
+	B=0;
+}
+else if (light<=bright[0]){
+	I=100;
+	D=0;
+	B=0;
+}
+else if (light<=dim[1]){
+	B=(light-bright[0])/4;
+	I=100-B;
+	D=0;
+}
+else{
+	B=100;
+	D=0;
+	I=0;
+}
+if(hall<=(avg[0]-200)){
+	C= 100;
+	A=0;
+	F=0;
+}
+else if (hall<=close[1]){
+	A=(hall-2600)/2;
+	C=100-I;
+	F=0;
+}
+else if (hall<=far[0]){
+	A=100;
+	C=0;
+	F=0;
+}
+else if (hall<=avg[1]){
+	F=(hall-far[0])/9;
+	A=100-F;
+	C=0;
+}
+else{
+	F=100;
+	C=0;
+	A=0;
+}
+
+
+
+	ADCA_CTRLA |= ADC_CH0START_bm ; //
+		ADCB_CTRLA |= ADC_CH0START_bm ; //
 	
-ISR( PORTC_INT0_vect ){
-	
-	input_changed= ~PORTC_IN & BUTTON;
-	state_machine(input_changed);
-  }
+		free(sample_word);
+		sample_word=malloc(50);
+		sprintf(sample_word,"Dark: %d , Dim: %d , Bright: %d  Hall effect:  close:%d  near: %d  far:%d raw:%d\r",D,I,B,C,A,F, hall);
+		USART_send(&Ser,sample_word );
+				
+}
+/* Interrupt Service Handlers */
+ISR(USARTC0_RXC_vect){
+	Rx_Handler(&Ser);
+	//wait_for_it=1;
+}
+
+ISR(USARTC0_TXC_vect){
+	Tx_Handler(&Ser);	
+}
+
+ISR(USARTC0_DRE_vect){
+}
 
 ISR(ADCA_CH0_vect){
-		adc_sample[adccount]=ADCA.CH0.RES;
-	
+	//free(sample_word);
+	//sample_word=malloc(50);
+	light=ADCA.CH0.RES;
+	//sprintf(sample_word,"The light value is : %d \n",light);
+	//USART_send(&Ser,sample_word );
 }
 
-//TRIGGER 1X LIGHT SENSOR SAMPLE
-ISR(TCC0_CCA_vect){  
-	ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN0_gc;
-	ADCA_CTRLA |= ADC_CH0START_bm ; 
-	adccount=0;
+ISR(ADCB_CH0_vect){
+	//adc_sample[adccount]=ADCB.CH0.RES;
+//	PORTR_OUT^=0x02;
+
+	hall=ADCB.CH0.RES;
 }
 
-//TRIGGER 1X TEMPERATURE SAMPLE
-ISR(TCC0_CCB_vect){ 
-	ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN4_gc;
-	ADCA_CTRLA |= ADC_CH0START_bm ; 
-	adccount=1;
+
+// call used peripheral setups
+void setup_peripherals(){
+	cli();
+	sys_clock();
+//	setup_gpio();
+	setup_timer();
+	setup_adcA();   //light sensor
+	setup_adcB();	//accelerometer on adc0,1,2
+
+	//setup_spi();
+	setup_avrx_usart();
+	PMIC_CTRL = PMIC_HILVLEN_bm|PMIC_MEDLVLEN_bm|PMIC_LOLVLEX_bm;   // enable all priorities
+	sei();
 }
-//TRIGGER 1X EXTERNAL SENSOR SAMPLE     HALL EFFECT?
-ISR(TCC0_CCC_vect){
-	ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN5_gc;
-	ADCA_CTRLA |= ADC_CH0START_bm ; 
-	adccount=2;
-}
+
 
 int main(void)
-{
-		cli();       
-//	PORTB_DIR=0xff; //set port to output
-	//PORTB_OUT=0Xff; //initialize port to off
-	//PORTE_DIR=0x00; //SET PORTS TO INPUT
-		//set mcu clock/frequency
-		SetSystemClock(CLK_SCLKSEL_RC32M_gc, CLK_PSADIV_1_gc,CLK_PSBCDIV_1_1_gc);
-		GetSystemClocks(&sClk, &pClk);
-		PORTC_DIR=0;
-PORTR_DIR&=0X07;
-PORTR_OUT&=0X06;
-
-//LCD BACKLIGHT
-PORTE_DIR&=0X08;
-
-PORTC_INT0MASK=0x01|0x02|0x04|0x08|0x10|0x20;  //turn on interrupts for ports 0:5
-PORTC_INTCTRL= PMIC_MEDLVLEN_bm;
-
-    PORTCFG_MPCMASK=0x01|0x02|0x04|0x08|0x10|0x20;  //0:5
-	PORTC_PIN0CTRL=  PORT_OPC_PULLUP_gc|   PORT_ISC_RISING_gc; //SET MPCMASKED PINS TO 0X02 sense low (capacitive touch buttons are active low)
+{	
+	PORTR_DIR=0X03;
+	PORTE_DIR&=0X08;
+	PORTR_OUT=0X0F;
 	
-         //clear interrupts
+	//hall
+close[0]=0000;
+close[1]=2600;
+avg[0]=2800;
+avg[1]=3400;
+far[0]=3200;
+far[1]=4095;
 
-setup_timer();
-	setup_adcA();
-	PMIC_CTRL = PMIC_HILVLEN_bm|PMIC_MEDLVLEN_bm|PMIC_LOLVLEX_bm;   // turn on medium priority interrupts & LOW PRIORITY INTERRUPT
-	sei();
-		state_machine(0); //initialize state machine
-while(1){
+	dark[0]=0;
+	dark[1]=900;
+	dim[0]=500;
+	dim[1]=1600;
+	bright[0]=1200;
+	bright[1]=4095;
+
+	sample_word=malloc(50);
+	setup_peripherals();
+
+while (1)
+    {
 		
-		;
-}
-}
-
-
-void state_machine(uint8_t input){
-	switch (state){
-		case 0x00: //closed
-			S0(input);
-			break;
-		case 0x01: //opening
-			S1(input);
-			break;
-		case 0x02://open
-			S2(input);
-			break;
-		case 0x04://closing
-			S3(input);
-			break;
-	}
-}	
-
-
-void S0(uint8_t input){ //closed
-	input=input&BUTTON;
-		//PORTB_OUT=0XE0;	
-		if(input&!BUTTON){
-			state     = 0x01;
-			state_machine(0);
+  	if ((B>=80)&& (A>=80)){
+			PORTR_OUT=~0X01;
+		
 		}
-		else{
-		//motor=OFF;
-		PORTR_OUT|=0X04;
+		else
+		
+		 if((I>=80)&&(F>=80))
+		{
+			PORTR_OUT=~0X02;		
 		}
+		else if ((D>=90)&&(C>=80)){
+			PORTR_OUT=~0X03;
+		}
+		else{ 
+			PORTR_OUT=0X03;
+		}
+
+    }
 }
 
-void S1(uint8_t input){//opening
-	if (input &ENDUP){
-			state==0x02;
-		state_machine(0);
-		}
-		else{
-		//direction=UP;
-		PORTR_OUT&=~0X02;
-		//motor=ON;
-		PORTR_OUT&=~0X04;
-		}
-	};
-			
-void S2(uint8_t input){//opened
-	if (input&BUTTON){
-		state=0x03;
-		state_machine(0);
-	}
-else{	
-	//motor=OFF;
-	PORTR_OUT|=0X04;
-	}
-	};
-	
-void S3(uint8_t input){//closing
-	if(input&BADDOOR){
-		state=0x01;
-		state_machine(0);
-	}
-	else{
-		//direction=DOWN;
-
-		PORTR_OUT&=~0X02;
-		//motor=ON;
-		PORTR_OUT&=~0X04;
-	}
-	};
 
 
 void setup_adcA(){
-	ADCA_CTRLB |= ADC_RESOLUTION_12BIT_gc;
-	ADCA_REFCTRL |= ADC_REFSEL_INTVCC2_gc; // use 3V3 to chip
-	ADCA_PRESCALER |= ADC_PRESCALER_DIV512_gc; //peripheral clock/512
-	ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
-	
-	ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN0_gc;
-	ADCA_CTRLA |= ADC_ENABLE_bm;
-	ADCA_CH0_INTCTRL = ADC_CH_INTMODE_COMPLETE_gc| ADC_CH_INTLVL_HI_gc;
-	
+		ADCA_CTRLB |= ADC_RESOLUTION_12BIT_gc;
+		ADCA_REFCTRL |= ADC_REFSEL_INTVCC2_gc; // use 3V3 to chip
+		ADCA_PRESCALER |= ADC_PRESCALER_DIV512_gc; //peripheral clock/512
+		ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
+		
+		ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN0_gc;
+		ADCA_CTRLA |= ADC_ENABLE_bm; 	
+		ADCA_CH0_INTCTRL = ADC_CH_INTMODE_COMPLETE_gc| ADC_CH_INTLVL_HI_gc;	
+		ADCA_CTRLA |= ADC_CH0START_bm ; //
+		
 }
 
 
+void setup_adcB(){
+	ADCB_CTRLB |= ADC_RESOLUTION_12BIT_gc;
+	ADCB_REFCTRL |= ADC_REFSEL_INTVCC2_gc; // use 3V3 to chip
+	ADCB_PRESCALER |= ADC_PRESCALER_DIV256_gc; //peripheral clock/512
+
+	ADCB_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
+	ADCB_CH0_MUXCTRL =ADC_CH_MUXPOS_PIN0_gc|ADC_CH_MUXNEG_PIN0_gc;//|ADC_CH_MUXPOS_PIN1_gc|ADC_CH_MUXPOS_PIN2_gc;
+	ADCB_CTRLA |= ADC_ENABLE_bm; 
+	ADCB_CH0_INTCTRL = ADC_CH_INTMODE_COMPLETE_gc| ADC_CH_INTLVL_HI_gc;
+	ADCB_CTRLA |= ADC_CH0START_bm ; //
+	
+}
+
+void sys_clock(){
+	//set mcu clock/frequency
+	SetSystemClock(CLK_SCLKSEL_RC32M_gc, CLK_PSADIV_1_gc,CLK_PSBCDIV_1_1_gc);
+	GetSystemClocks(&sClk, &pClk);
+	}
+	
 void setup_timer(){
 	//	1s= 2Mhz/1024= 0x7a1
 	//  1s=32m/1024=0x7a12
-	TCC0_PER=0X7a12;					//1s
+	TCC0_PER=0X7a1;					//1s
 	TCC0_INTCTRLA = PMIC_MEDLVLEN_bm; // medium level interrupt
 	
 	//CTRLA /PRESCALER /1	/2	/4	/8	/64	/256	/1024
-	//VALUE		      0X1	0X2	0X3	0X4	0X5	0X6		0X7
-	setup_compare_timer();
+	//VALUE		      0X1	0X2	0X3	0X4	0X5	0X6		0X7	
+	//setup_compare_timer();
 	TCC0_CTRLA=0x7;
 	
 }
 
 
-void setup_compare_timer(){
-	//set compare counters
-	TCC0_CCA=TCC0_PER/6;
-	TCC0_CCB=TCC0_PER/5;
-	TCC0_CCC=TCC0_PER/4;
 
-	TCC0_CTRLB|= TC0_CCAEN_bm|TC0_CCBEN_bm|TC0_CCCEN_bm;
-	TCC0_INTCTRLB|=PMIC_MEDLVLEN_bm<<TC0_CCAINTLVL_gp|PMIC_MEDLVLEN_bm<<TC0_CCBINTLVL_gp|PMIC_MEDLVLEN_bm<<TC0_CCCINTLVL_gp;
+
+//Configure USART
+
+void setup_avrx_usart(){
+	
+	USART_init(&Ser, 0xc0, pClk, (_USART_TXCIL_LO | _USART_RXCIL_LO), 576, -4,_USART_CHSZ_8BIT, _USART_PM_DISABLED, _USART_SM_1BIT);
+	USART_buffer_init(&Ser, 160, 180);
+	Ser.fInMode = _INPUT_CR ; //| _INPUT_ECHO | _INPUT_TTY;
+	Ser.fOutMode = _OUTPUT_CRLF;
+	USART_enable(&Ser,(USART_TXEN_bm|USART_RXEN_bm));
+	
 }
+
+
+
