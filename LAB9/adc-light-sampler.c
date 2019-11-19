@@ -1,4 +1,22 @@
 /*
+ * lab9-part1.c
+ *
+ * Created: 11/14/2019 10:09:33 AM
+ * Author : Sean
+ */ 
+
+//#include <avr/io.h>
+
+/*
+int main(void)
+{
+    // Replace with your application code */
+  //  while (1) 
+    //{
+    //}
+//}
+//
+/*
  * Lab4-Part2-interrupt timer triggered samples
  * Created: 9/19/2019 3:16:32 PM
  * Author : Sean Gow and Denice Hickethier
@@ -24,6 +42,14 @@ void setup_avrx_usart();
 void setup_gpio(); 
 /*end of fun */
 
+int dark[2];
+
+int dim[2];
+
+
+int bright[2];
+
+
 
 void setup_adcA(); //new for lab4
 void setup_adcB(); //new for lab4
@@ -33,7 +59,7 @@ volatile int tx_ready=0;
 volatile XUSARTst Ser;
  char *wordcount[]= {"one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen"};
  char *word;
-
+void automata();
 
 unsigned long sClk, pClk; //sysclock and peripheral clock
  char rx_buf[1];
@@ -45,7 +71,9 @@ volatile int enable_count=0;
 volatile int enable_light_adc=1;
 volatile int enable_accel=1;
 volatile int adccount=1;
-volatile int light=0;
+volatile uint16_t light=0;
+
+volatile int D,I,B=0;
 
 
 ISR (TCC0_OVF_vect){
@@ -55,12 +83,73 @@ ISR (TCC0_OVF_vect){
 		count++;	
 		USART_send(&Ser, word);
 	}
-	if (enable_light_adc==1){
+	//if (enable_light_adc==1){
 
+/*
+dark[0]=0;
+dark[1]=900;
+dim[0]=500;
+dim[1]=1600;
+bright[0]=1200;
+bright[1]=4095;*/
+
+//calculate fuzziness truth value
+if(light<=(dim[0]-300)){
+	D= 100;
+	I=0;
+	B=0;
+}
+else if (light<=dark[1]){
+	I=(light-200)/7;
+	D=100-I;
+	B=0;
+}
+else if (light<=bright[0]){
+	I=100;
+	D=0;
+	B=0;
+}
+else if (light<=dim[1]){
+	B=(light-bright[0])/4;
+	I=100-B;
+	D=0;
+}
+else{
+	B=100;
+	D=0;
+	I=0;
+}
+
+//if (adc_sample[0] )
 		//ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
 	//	ADCA_CTRLA |= ADC_ENABLE_bm; // enable and wait ~24clks?
 		ADCA_CTRLA |= ADC_CH0START_bm ; //
+		ADCB_CTRLA |= ADC_CH0START_bm ; //
+	//}
+	
+	/*
+	if (light>=900 && light<=1600){
+		I=(light-900)/7;
+		
 	}
+	else
+	{ 
+		I=0;
+	}
+	if (light>=1600 &&light<=4095){
+		B=(light-1600)/25;
+	}
+	else {
+		B=0;
+	}
+	*/
+	
+		free(sample_word);
+		sample_word=malloc(50);
+		sprintf(sample_word,"Dark: %d , Dim: %d , Bright: %d  Hall effect:%d \r\n",D,I,B,adc_sample[0]);
+		USART_send(&Ser,sample_word );
+	
+	
 	
 	//if (enable_accel==1){
 //		if (adccount==2){
@@ -105,16 +194,18 @@ ISR(USARTC0_DRE_vect){
 }
 
 ISR(ADCA_CH0_vect){
-	free(sample_word);
-	sample_word=malloc(50);
+	//free(sample_word);
+	//sample_word=malloc(50);
 	light=ADCA.CH0.RES;
-	sprintf(sample_word,"The light value is : %d \n",light);
-	USART_send(&Ser,sample_word );
+	//sprintf(sample_word,"The light value is : %d \n",light);
+	//USART_send(&Ser,sample_word );
 }
 
 ISR(ADCB_CH0_vect){
 	//adc_sample[adccount]=ADCB.CH0.RES;
-	PORTR_OUT^=0x02;
+//	PORTR_OUT^=0x02;
+
+	adc_sample[0]=ADCB.CH0.RES;
 }
 
 
@@ -136,56 +227,24 @@ void setup_peripherals(){
 
 int main(void)
 {	
-	
+	dark[0]=0;
+	dark[1]=900;
+	dim[0]=500;
+	dim[1]=1600;
+	bright[0]=1200;
+	bright[1]=4095;
+
 	sample_word=malloc(50);
 	setup_peripherals();
 	
 while (1)
     {
-		if (wait_for_it==1)			
-		{
-			wait_for_it=0;
-			USART_read(&Ser,rx_buf);
-			USART_RxFlush(&Ser);
-			parse_it(rx_buf);	
-		}
+		automata();
+
     }
 }
 
-void parse_it(char *text){	
-	switch (text[0]){
-		case '1': count=1;break;
-		case '2': count=2;break;
-		case '3': count=3;break;
-		case '4': count=4;break;
-		case '5': count=5;break;
-		case '6': count=6;break;
-		case '7': count=7;break;
-		case '8': count=8;break;
-		case '9': count=9;break;
-		case 'a': count=10;break;
-		case 'b': count=11;break;
-		case 'c': count=12;break;
-		case 'd': count=13;break;
-		case 'e': count=14;break;
-		case 'f': count=15;break;
-		case 's': enable_count^=0x01;
-			USART_send(&Ser,"toggle_count");
-			break;
-		case 'l': enable_light_adc^=0x01;
-			USART_send(&Ser,"sample_light");
-			ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
-			ADCA_CTRLA |= ADC_ENABLE_bm; // enable and wait ~24clks?
-			ADCA_CTRLA |= ADC_CH0START_bm ; //
-			break;
-		case 'x': //toggle accel sample printout
-			enable_accel^=1;
-			break;
-			
-	}
-	count =count-1;
-	return;	
-}
+
 
 void setup_adcA(){
 		ADCA_CTRLB |= ADC_RESOLUTION_12BIT_gc;
@@ -193,7 +252,7 @@ void setup_adcA(){
 		ADCA_PRESCALER |= ADC_PRESCALER_DIV512_gc; //peripheral clock/512
 		ADCA_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
 		
-		ADCA_CH0_MUXCTRL = ADC_CH_MUXNEG_PIN0_gc;
+		ADCA_CH0_MUXCTRL = ADC_CH_MUXPOS_PIN0_gc;
 		ADCA_CTRLA |= ADC_ENABLE_bm; 	
 		ADCA_CH0_INTCTRL = ADC_CH_INTMODE_COMPLETE_gc| ADC_CH_INTLVL_HI_gc;	
 		ADCA_CTRLA |= ADC_CH0START_bm ; //
@@ -207,7 +266,7 @@ void setup_adcB(){
 	ADCB_PRESCALER |= ADC_PRESCALER_DIV256_gc; //peripheral clock/512
 
 	ADCB_CH0_CTRL =  ADC_CH_INPUTMODE_SINGLEENDED_gc|ADC_CH_GAIN_1X_gc;
-	ADCB_CH0_MUXCTRL =ADC_CH_MUXPOS_PIN0_gc|ADC_CH_MUXPOS_PIN1_gc|ADC_CH_MUXPOS_PIN2_gc;
+	ADCB_CH0_MUXCTRL =ADC_CH_MUXPOS_PIN0_gc|ADC_CH_MUXNEG_PIN0_gc;//|ADC_CH_MUXPOS_PIN1_gc|ADC_CH_MUXPOS_PIN2_gc;
 	ADCB_CTRLA |= ADC_ENABLE_bm; 
 	ADCB_CH0_INTCTRL = ADC_CH_INTMODE_COMPLETE_gc| ADC_CH_INTLVL_HI_gc;
 	ADCB_CTRLA |= ADC_CH0START_bm ; //
@@ -269,4 +328,12 @@ void setup_gpio(){
 	PORTR_DIR|=0x3; //enable leds
 	PORTR_OUT|=0X02;//turn R0 led on
 
+}
+
+
+automata(){
+	
+	
+	
+	
 }
