@@ -1,0 +1,62 @@
+
+/* clock initialization with digital frequency locked loop */
+void system_clocks(){
+	
+	//change osc
+	//enable rtc with 32k
+	CLK.RTCCTRL=CLK_RTCSRC_RCOSC_gc|1;
+	
+	//set external oscillator to 32k crystal
+	OSC.XOSCCTRL=OSC_XOSCSEL_32KHz_gc|OSC_X32KLPM_bm|OSC_XOSCPWR_bm;
+	//use 32k cal register to production calibration do not use with dfll
+	//OSC.RC32KCAL=PRODSIGNATURES_RCOSC32K;
+	//INTERNAL CALIBRATED DIGITAL? OSCILLATOR
+	CCP=CCP_IOREG_gc; 
+
+	OSC.PLLCTRL=OSC_PLLSRC_RC32M_gc|OSC_PLLFAC3_bm; //0x04 32mhz*4=128mhz?
+	//calibrate 32mhz to 32k crystal
+	OSC.DFLLCTRL=OSC_RC32MCREF_RC32K_gc|OSC_RC2MCREF_RC32K_gc;
+	
+	OSC.CTRL=OSC_RC32MEN_bm|OSC_XOSCEN_bm|OSC_PLLEN_bm|OSC_RC32KEN_bm|OSC_FRQRANGE_04TO2_gc;
+	
+	while(!(OSC_STATUS & (OSC_RC32MRDY_bm|OSC_PLLRDY_bm|OSC_RC2MRDY_bm )));   
+	CCP=CCP_IOREG_gc;	//signal protected ioreg change
+	CLK.RTCCTRL|=CLK_RTCEN_bm;
+	
+	while(!(OSC_STATUS & (OSC_RC32MRDY_bm|OSC_PLLRDY_bm|OSC_RC2MRDY_bm )));   		
+	CCP=CCP_IOREG_gc; 	//signal protected ioreg change
+	//SET DEFAULT SYSCLOCK
+	CLK_CTRL=CLK_SCLKSEL_RC32M_gc;
+	while(!(OSC_STATUS & OSC_RC32KRDY_bm));  
+	DFLLRC2M.CTRL=DFLL_ENABLE_bm;
+	DFLLRC32M.CTRL=DFLL_ENABLE_bm;
+		
+	CCP=CCP_IOREG_gc; 
+	//CHANGE CLOCK PRESCALERS
+	CLK.PSCTRL=CLK_PSADIV_1_gc| CLK_PSBCDIV_2_2_gc;
+   //systemclock output on pin 7 | 
+	PORTCFG.CLKEVOUT= PORTCFG_CLKEVPIN_PIN7_gc|PORTCFG_CLKOUT_PC7_gc|PORTCFG_CLKOUTSEL_CLK4X_gc|PORTCFG_EVOUT_PC7_gc;
+	
+	
+}
+/*rtc32 enabled*/
+void rtc32_clock(){
+	
+	//rtc clock
+	RTC32.CTRL;
+	RTC32.SYNCCTRL;
+	RTC32.INTCTRL;
+	RTC32.INTFLAGS;
+	RTC32.CNT;
+	RTC32.PER;
+	RTC32.COMP;
+
+
+	//rtc battery  //must be turned on before rtc enabled
+	VBAT.CTRL=VBAT_ACCEN_bm|VBAT_XOSCEN_bm|VBAT_XOSCSEL_bm;
+	//VBAT.STATUS;
+	//VBAT.BACKUP0;
+	//VBAT.BACKUP1;
+	
+	RTC32.CTRL=RTC32_ENABLE_bm;	
+}
