@@ -1,0 +1,36 @@
+
+
+working pwm init functions lab4-part1
+unsigned long calc_period(uint8_t time, uint16_t t_scale){
+	uint8_t i;
+	uint16_t prescale=1024;
+	unsigned long per=0;
+	
+	/* 1s period =pclk/divisor */
+	/*
+	2^10=1024  0x7
+	2^8=256   0x6
+	2^6=64   0x5
+	2^3=8    0x4
+	2^2=4    0x3
+	2^1=2    0x2
+	2^0=1    0x1   
+	*/
+	//turn bitvalue into value for calculation
+	for (i=7;i>(TCC0_CTRLA & 0x7);i--){  
+		prescale=prescale/2;
+		if (i>4) //prescale decrement by factor of 4 if >4, or 2 <=4
+			prescale=prescale/2;
+		else if (i==4) 
+			prescale=prescale/4; 
+    }
+	per=pClk/prescale*time/t_scale;
+	
+	return per;	
+}
+
+void tcc0_pwm_control(uint8_t time, uint16_t t_scale, uint8_t duty_cycle){
+	TCC0_PER=calc_period(time,t_scale)+4;
+	TCC0_CCA=(TCC0_PER*duty_cycle)/100;	
+}
+
