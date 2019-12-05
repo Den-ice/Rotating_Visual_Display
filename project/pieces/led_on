@@ -1,0 +1,149 @@
+/*
+Physics 402 Final Project 
+*/
+
+#define F_CPU 32000000L  //for wait util
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+
+uint8_t *data[88];
+uint8_t startframe=0x00;
+uint8_t ledframe=0XE0;
+uint8_t brightness=0xf0;
+
+uint8_t blue=0xff;
+uint8_t red=0xff;
+uint8_t green=0xff;
+uint8_t stopframe=0xff;
+
+uint8_t count=0;
+#include "setup.h"
+void led(int num);
+
+uint8_t leds[20]={1,2,3,0,5,0,7,0,9,0,11,0,13,0,15,0,17,0,19,0};
+
+//#include "codevisionevents.h"
+ISR(RTC32_OVF_vect){
+	
+	
+	
+}
+ISR (TCC0_OVF_vect){	
+	
+
+    }
+	
+ISR(TCC0_CCA_vect){  
+	PORTC_OUT|=0X01;			
+	PORTR_OUT^=0x02;
+}
+		
+ISR(TCC0_CCB_vect){ 
+	PORTC_OUT=PORTC_OUT&~0X01;			
+	PORTR_OUT|=0X02;
+
+
+}
+ISR(TCC0_CCC_vect){
+	
+	}
+	
+
+
+/* //Interrupt Service Handlers 
+ISR(USARTC0_RXC_vect){
+	Rx_Handler(&Ser);
+}
+*/
+/*
+ISR(USARTC0_TXC_vect){
+	Tx_Handler(&Ser);
+}
+ISR(USARTC0_DRE_vect){
+}
+ISR(ADCA_CH0_vect){
+}
+ISR(ADCB_CH0_vect){
+}
+*/
+
+ISR( PORTC_INT0_vect ){
+}
+
+
+int main(){
+	cli();
+	//event_system_init();
+	system_clocks();
+	rtc32_clock();
+	timer();
+	gpio_setup();
+	sei();
+	data[0]=&startframe;
+	data[1]=&startframe;
+	data[2]=&startframe;
+	data[3]=&startframe;
+	data[84]=&stopframe;
+	data[85]=&stopframe;
+	data[86]=&stopframe;
+	data[87]=&stopframe;
+	
+	for (int i=4;i<=8;i++){
+	data[i+0]=&ledframe;
+	data[i+1]=&blue;
+	data[i+2]=&green;
+	data[i+3]=&red;		
+	}
+	
+	setup_spi();
+	_delay_ms(500);
+	//setup_dmac((uint32_t) &data,(uint32_t) &SPIC_DATA);
+	while(1){
+		
+		//DMA.CH0.CTRLA=DMA_CH_TRFREQ_bm; //MANUAL TRIGGER
+		//while(!(DMA.CH0.CTRLB&DMA_CH_TRNIF_bm));
+		//_delay_us(1);
+		
+		//32BITS START FRAME
+USARTC0_DATA=startframe;
+	_delay_us(1);
+USARTC0_DATA=startframe;
+_delay_us(1);
+USARTC0_DATA=startframe;
+_delay_us(1);
+USARTC0_DATA=startframe;
+_delay_us(1);
+
+//END OF START FRAME
+
+led(20);
+
+_delay_us(100);
+USARTC0_DATA=stopframe;
+
+
+	}
+
+}
+
+void led(int num){
+	int color=random(8);
+	for (int i=1;i<=num;i++){
+//START LED FRAME
+USARTC0_DATA=ledframe|0xf;
+_delay_us(100);
+//BLUE
+_delay_us(100);
+USARTC0_DATA=blue;
+//GREEN	
+_delay_us(100);
+USARTC0_DATA=green;
+_delay_us(100);
+
+_delay_us(100);
+USARTC0_DATA=red;
+_delay_us(100);
+//end LED
+	}
+}
