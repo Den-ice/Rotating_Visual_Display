@@ -1,0 +1,205 @@
+
+/*
+Physics 402 Final Project 
+*/
+
+#define F_CPU 32000000L  //for wait util
+#include <avr/io.h>
+#include <avr/interrupt.h>
+#include <util/delay.h>
+#include <math.h>
+uint8_t *data[88];
+uint8_t startframe=0x00;
+uint8_t ledframe=0XE0;
+uint8_t brightness=0xf0;
+
+uint8_t blue=0xff;
+uint8_t red=0xff;
+uint8_t green=0xff;
+uint8_t stopframe=0xff;
+
+uint8_t count=0;
+#include "setup.h"
+void led(int num);
+volatile int rampup=1;
+volatile float speed=5;
+volatile int duty=5;
+
+ISR(RTC32_OVF_vect){
+	
+	
+	
+}
+
+ISR (TCD0_OVF_vect){	
+	if (TCD0_CCA!=0)
+	{
+	PORTD_OUT|=0X01;			
+	PORTR_OUT^=0x02;
+	}
+	if (rampup!=0){
+		rampup++;
+		
+		if ( rampup>(1<<6))
+			{	
+				if (speed>=5.6)
+					rampup=0;
+				speed+=.01;
+				
+				tcd0_pwm_control(20,pow(10,3),speed);
+			}
+	}
+    }
+	
+ISR(TCD0_CCA_vect){  
+	if (TCD0_CCA==0){
+	PORTD_OUT|=0X01;			
+	PORTR_OUT^=0x02;
+	}
+	else{
+	PORTD_OUT=PORTD_OUT&~0X01;			
+	PORTR_OUT|=0X02;
+	}
+}
+		
+ISR(TCD0_CCB_vect){ 
+	PORTD_OUT=PORTD_OUT&~0X01;			
+	PORTR_OUT|=0X02;
+
+}
+ISR(TCD0_CCC_vect){
+
+	}
+ISR( PORTF_INT0_vect ){
+	// input_changed=~PORTE_IN ;
+/*	if (input_changed& 0x02)
+		duty=duty+10;
+	else if (input_changed&0x04)
+		duty=duty-10;
+*/
+	duty=3;
+	if (TCC0_CCA==0)//PHASE CORRECT PWM
+		TCC0_CCB=TCC0_PER*duty/100;
+	else //REGULAR PWM
+		TCC0_CCA=TCC0_PER*duty/100;
+
+//	tcc0_pwm_phase_correct(10,1000,duty);
+	
+	
+		}
+	
+	
+
+
+
+/* //Interrupt Service Handlers 
+ISR(USARTC0_RXC_vect){
+	Rx_Handler(&Ser);
+}
+*/
+/*
+ISR(USARTC0_TXC_vect){
+	Tx_Handler(&Ser);
+}
+ISR(USARTC0_DRE_vect){
+}
+ISR(ADCA_CH0_vect){
+}
+ISR(ADCB_CH0_vect){
+}
+*/
+
+
+ISR( PORTA_INT0_vect ){
+	
+}
+
+
+int main(){
+	cli();
+	//event_system_init();
+	system_clocks();
+	rtc32_clock();
+	timer();
+	cap_comp();
+	gpio_setup();
+	sei();
+	data[0]=&startframe;
+	data[1]=&startframe;
+	data[2]=&startframe;
+	data[3]=&startframe;
+	data[84]=&stopframe;
+	data[85]=&stopframe;
+	data[86]=&stopframe;
+	data[87]=&stopframe;
+	
+	for (int i=4;i<=8;i++){
+	data[i+0]=ledframe;
+	data[i+1]=blue;
+	data[i+2]=green;
+	data[i+3]=red;		
+	}
+	setup_dmac((uint32_t) data, (uint32_t) USARTC0_DATA);
+	
+	tcd0_pwm_control(20, pow(10,3), 5.0);
+	
+	setup_spi();
+	
+	//DMA.CH0.CTRLA=DMA_CH_TRFREQ_bm; //MANUAL TRIGGER
+	//while(!(DMA.CH0.CTRLB&DMA_CH_TRNIF_bm));
+	
+	_delay_ms(500);
+	//setup_dmac((uint32_t) &data,(uint32_t) &SPIC_DATA);
+	while(1){
+		
+	//DMA.CH0.CTRLA=DMA_CH_TRFREQ_bm; //MANUAL TRIGGER
+	//while(!(DMA.CH0.CTRLB&DMA_CH_TRNIF_bm));
+		_delay_us(1);
+	/*	
+		//32BITS START FRAME
+USARTC0_DATA=startframe;
+	_delay_us(1);
+USARTC0_DATA=startframe;
+_delay_us(1);
+USARTC0_DATA=startframe;
+_delay_us(1);
+USARTC0_DATA=startframe;
+_delay_us(1);
+
+//END OF START FRAME
+
+led(20);
+
+_delay_us(100);
+USARTC0_DATA=stopframe;
+_delay_us(100);
+USARTC0_DATA=stopframe;
+_delay_us(100);
+USARTC0_DATA=stopframe;
+_delay_us(100);
+USARTC0_DATA=stopframe;
+}
+*/
+}
+}
+
+void led(int num){
+	int color=random(8);
+	for (int i=1;i<=num;i++){
+//START LED FRAME
+USARTC0_DATA=ledframe|0x1;
+_delay_us(100);
+//BLUE
+_delay_us(100);
+USARTC0_DATA=blue;
+//GREEN	
+_delay_us(100);
+USARTC0_DATA=green;
+_delay_us(100);
+
+_delay_us(100);
+USARTC0_DATA=red;
+_delay_us(100);
+//end LED
+	}
+}
