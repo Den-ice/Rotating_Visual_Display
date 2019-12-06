@@ -13,18 +13,16 @@ ADC4-->PA4 = signal
 trigger on port A
 */
 
-volatile uint8_t input_changed=0;
-
 ISR( PORTA_INT0_vect ){
 
-	input_changed=1;
+	
 
   }
 
 
 int main(void)
 {	
-	PORTA_OUT=0x10
+	PORTA_OUT=0x10;
 	cli();                //clear interrupts
 
 	PORTA.PIN4CTRL = PORT_ISC_FALLING_gc;
