@@ -9,7 +9,6 @@
  * multistar 32bit esc drone motor controller, using pwm from tcd0 on port J4 PIN5
  * Hall effect sensor on PortA pin 2 routed through the on board analog filter, and pulldown resistor to increase the frequency of  low-pass cutoff
  * Event system capture of revolution timing
- * DMA initialization/unused
  ** DotStar LEDS/APA102 using USARTC0 Master SPI.
  */ 
 
