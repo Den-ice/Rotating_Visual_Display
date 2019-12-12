@@ -4,22 +4,18 @@
  *  11/26/2019
  *  Author: Sean Gow & Denice Hickethier
  * 
- * Components Used:
- * xmega 256a3bu, CPU@32MHz
- * multistar 32bit esc drone motor controller, using pwm from tcd0 on port J4 PIN5
- * Hall effect sensor on PortA pin 2 routed through the on board analog filter, and pulldown resistor to increase the frequency of  low-pass cutoff
- * Event system capture of revolution timing
- ** DotStar LEDS/APA102 using USARTC0 Master SPI.
  */ 
 
-#define F_CPU 32000000L  //for wait util
+#define F_CPU 32000000L 
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
 #include "setup.h"
+//ramp up motor
 void init_motor();
 
+//character fragments
 void alpha(int i);
 
 
@@ -187,7 +183,8 @@ void init_motor(){
 
 
 
-/* manually transmitting led signals
+/* 
+manually transmitting led signals
 */
 
 void blinkoff(){
