@@ -188,9 +188,7 @@ void init_motor(){
 
 
 
-/* Theres no magic here
-1000+ lines of the same thing but slightly different
-manually transmitting led signals
+/* manually transmitting led signals
 */
 
 void blinkoff(){
